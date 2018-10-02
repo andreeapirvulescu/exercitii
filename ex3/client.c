@@ -8,15 +8,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <math.h>
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 256
    
 int main(int argc, char *argv[]) 
 { 
     struct sockaddr_in address; 
     int client_fd, valread, port, file_size, fd; 
     struct sockaddr_in serv_addr;
-    char buffer[BUFFER_SIZE] = {0}, file_name[20];
+    char buffer[BUFFER_SIZE] = {0}, file_name[20] = {0};
     char *not_found_message = "File not found";
     int remain_data = 0, received_bytes = 0;
 
@@ -52,30 +53,45 @@ int main(int argc, char *argv[])
     }
 
     send(client_fd, argv[3], strlen(argv[3]), 0); 
-    printf("Hello message sent\n");
 
-    recv(client_fd, buffer, BUFFER_SIZE, 0);
+    received_bytes = recv(client_fd, buffer, BUFFER_SIZE, 0);
+
     if (strcmp(buffer, not_found_message) == 0)
     {
     	printf("There is no file with that name on the server\n");
+        return 0;
     } else {
     	file_size = atoi(buffer);
-    	printf("%s\n", buffer);
     	sprintf(file_name, "client%d", getpid());
     	if ((fd = open(file_name, O_WRONLY | O_CREAT, 0666)) == -1)
     	{
     		perror("Error with opening the file");
     	}
-    	printf("fd is %i", fd);
-    	remain_data = file_size;
-        memset(buffer, 0, sizeof(buffer));
-    	while ((received_bytes = recv(client_fd, buffer, BUFFER_SIZE, 0) > 0) && (remain_data >= 0))
-    	{	 		
-    		printf("fdddddd is %i\n", fd);
-    		write(fd, buffer, sizeof(buffer));
-    		remain_data -= received_bytes;
-    		memset(buffer, 0, sizeof(buffer));
-    	}
+
+        remain_data = file_size;
+        char *str = NULL;
+        str = strstr(buffer, "\t");
+        int bytes_written = 0;
+        if (str)
+        {
+            bytes_written = write(fd, str+1, received_bytes-abs(buffer-str-1));
+            remain_data -= bytes_written;
+        }
+    	
+        memset(buffer, 0, BUFFER_SIZE);
+
+        while (remain_data > 0)
+        {
+            received_bytes = recv(client_fd, buffer, BUFFER_SIZE, 0);
+            if (received_bytes < 0)
+            {
+                perror("Error in recv");
+            }
+            write(fd, buffer, received_bytes);
+            remain_data -= received_bytes;
+            memset(buffer, 0, BUFFER_SIZE);
+        }
+
     }
 
    	close(fd);

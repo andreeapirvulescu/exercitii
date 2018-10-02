@@ -10,19 +10,18 @@
 #include <string.h> 
 
 #define MAX_CLIENTS 20
-#define BUFFER_SIZE 1024 
+#define BUFFER_SIZE 256 
 
 int main(int argc, char *argv[]) 
 { 
-    int server_fd, new_socket, port, valread, fd; 
+    int server_fd, new_socket, port, fd; 
     struct sockaddr_in address; 
     int addrlen = sizeof(address); 
     char buffer[BUFFER_SIZE] = {0}; 
     char *not_found_message = "File not found";
     struct stat file_stat;
-    char file_size[256];
-    int remain_data, bytes_read = 0;
-    off_t offset;
+    char file_size[256] = {0};
+    int remain_data, bytes_read = 0, bytes_written = 0;
 
     if (argc < 2)
 	{
@@ -61,8 +60,8 @@ int main(int argc, char *argv[])
         return 1; 
     } 
 
-    valread = recv(new_socket, buffer, BUFFER_SIZE, 0); 
-    printf("%s\n", buffer);
+    recv(new_socket, buffer, BUFFER_SIZE, 0); 
+
 
     if (stat(buffer, &file_stat))
     {
@@ -72,24 +71,13 @@ int main(int argc, char *argv[])
     	{
     		perror("Error with opening the file");
     	}
-    	sprintf(file_size, "%ld", file_stat.st_size);
+    	sprintf(file_size, "%ld\t", file_stat.st_size);
     	send(new_socket, file_size, strlen(file_size), 0);
-    	offset = 0;
     	remain_data = file_stat.st_size;
-    	memset(buffer, 0, sizeof(buffer));
-    	/*while(((sent_bytes = sendfile(new_socket, fd, &offset, BUFFER_SIZE)) > 0) &&
-    			(remain_data > 0))
-    	{
-    		printf("sent bytes %i\n", sent_bytes);
-    		remain_data -= sent_bytes;
-    		memset(buffer, 0, sizeof(buffer));
-    	}*/
-    	/*while((sent_bytes = read(fd, buffer, BUFFER_SIZE)) > 0)
-    	{
-    		send(new_socket, buffer, sent_bytes, 0);
-    		memset(buffer, 0, sizeof(buffer));
-    	}*/
-    	while(1)
+
+    	memset(buffer, 0, BUFFER_SIZE);
+
+    	while(remain_data > 0)
     	{
     		bytes_read =  read(fd, buffer, BUFFER_SIZE);
     		if (bytes_read == 0)
@@ -100,17 +88,16 @@ int main(int argc, char *argv[])
     		{
     			perror("Error during read");
     		}
-    		void *p = buffer;
     		while (bytes_read > 0)
     		{
-    			int bytes_written = send(new_socket, p, bytes_read, 0);
+    			bytes_written = send(new_socket, buffer, bytes_read, 0);
+                remain_data -= bytes_written;
     			if (bytes_written < 0)
     			{
     				perror("Error during send");
     			}
     			bytes_read -= bytes_written;
-    			p += bytes_written;
-    			memset(buffer, 0, sizeof(buffer));
+    			memset(buffer, 0, BUFFER_SIZE);
     		}
 
     	}
