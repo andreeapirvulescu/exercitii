@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
         }
 
     }
+    getchar();
 
    	close(fd);
    	close(client_fd);

@@ -10,11 +10,18 @@
 #include <string.h> 
 
 #define MAX_CLIENTS 20
-#define BUFFER_SIZE 256 
+#define BUFFER_SIZE 256
+
+typedef struct {
+    char file_name[20];
+    int port;
+    int socket;
+} client_info;
+
 
 int main(int argc, char *argv[]) 
 { 
-    int server_fd, new_socket, port, fd; 
+    int server_fd, new_socket, port, fd, i = 0; 
     struct sockaddr_in address; 
     int addrlen = sizeof(address); 
     char buffer[BUFFER_SIZE] = {0}; 
@@ -22,6 +29,7 @@ int main(int argc, char *argv[])
     struct stat file_stat;
     char file_size[256] = {0};
     int remain_data, bytes_read = 0, bytes_written = 0;
+    fd_set read_fds, active_fds, fd_max;
 
     if (argc < 2)
 	{
@@ -30,6 +38,8 @@ int main(int argc, char *argv[])
 	}
 
 	port = atoi(argv[1]);
+
+    FD_ZERO(&active_fds);
        
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) 
     { 
@@ -53,60 +63,79 @@ int main(int argc, char *argv[])
         return 1; 
     }
 
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-    		(socklen_t*)&addrlen)) < 0) 
-    { 
-        perror("Error in accept"); 
-        return 1; 
-    } 
 
-    recv(new_socket, buffer, BUFFER_SIZE, 0); 
+    FD_SET(server_fd, &active_fds);
 
-
-    if (stat(buffer, &file_stat))
+    while (1)
     {
-    	send(new_socket, not_found_message, strlen(not_found_message), 0); 
-    } else {
-    	if ((fd = open(buffer, O_RDONLY)) == -1)
-    	{
-    		perror("Error with opening the file");
-    	}
-    	sprintf(file_size, "%ld\t", file_stat.st_size);
-    	send(new_socket, file_size, strlen(file_size), 0);
-    	remain_data = file_stat.st_size;
+        read_fds = active_fds;
+        if (select (FD_SETSIZE, &read_fds, NULL, NULL, NULL) < 0)
+        {
+          perror("Error in select");
+          return 1;
+        }
+        for (i = 0; i < FD_SETSIZE; ++i)
+        {
+            if (FD_ISSET (i, &read_fds))
+            {
+                if (i == server_fd)
+                {
+                    /* Connection request on original socket. */
+                    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, 
+                            (socklen_t*)&addrlen)) < 0) 
+                    { 
+                        perror("Error in accept"); 
+                        return 1; 
+                    } 
+                    FD_SET(new_socket, &active_fds);
+                } else {
+                    /* Data arriving on an already-connected socket. */
+                    recv(new_socket, buffer, BUFFER_SIZE, 0);
+                    if (stat(buffer, &file_stat))
+                    {
+                        send(new_socket, not_found_message, strlen(not_found_message), 0); 
+                    } else {
+                        if ((fd = open(buffer, O_RDONLY)) == -1)
+                        {
+                            perror("Error with opening the file");
+                        }
+                        sprintf(file_size, "%ld\t", file_stat.st_size);
+                        send(new_socket, file_size, strlen(file_size), 0);
+                        remain_data = file_stat.st_size;
 
-    	memset(buffer, 0, BUFFER_SIZE);
+                        memset(buffer, 0, BUFFER_SIZE);
 
-    	while(remain_data > 0)
-    	{
-    		bytes_read =  read(fd, buffer, BUFFER_SIZE);
-    		if (bytes_read == 0)
-    		{
-    			break;
-    		}
-    		if (bytes_read < 0)
-    		{
-    			perror("Error during read");
-    		}
-    		while (bytes_read > 0)
-    		{
-    			bytes_written = send(new_socket, buffer, bytes_read, 0);
-                remain_data -= bytes_written;
-    			if (bytes_written < 0)
-    			{
-    				perror("Error during send");
-    			}
-    			bytes_read -= bytes_written;
-    			memset(buffer, 0, BUFFER_SIZE);
-    		}
-
-    	}
-
+                        while(remain_data > 0)
+                        {
+                            bytes_read =  read(fd, buffer, BUFFER_SIZE);
+                            if (bytes_read == 0)
+                            {
+                                break;
+                            }
+                            if (bytes_read < 0)
+                            {
+                                perror("Error during read");
+                            }
+                            while (bytes_read > 0)
+                            {
+                                bytes_written = send(new_socket, buffer, bytes_read, 0);
+                                remain_data -= bytes_written;
+                                if (bytes_written < 0)
+                                {
+                                    perror("Error during send");
+                                }
+                                bytes_read -= bytes_written;
+                                memset(buffer, 0, BUFFER_SIZE);
+                            }
+                        }
+                        close(fd);
+                        close(i);
+                        FD_CLR (i, &active_fds);
+                    }
+                }
+            }
+        }
     }
-    
-    close(fd);
-    close(server_fd);
-    close(new_socket);
 
     return 0; 
 }
