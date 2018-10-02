@@ -12,13 +12,6 @@
 #define MAX_CLIENTS 20
 #define BUFFER_SIZE 256
 
-typedef struct {
-    char file_name[20];
-    int port;
-    int socket;
-} client_info;
-
-
 int main(int argc, char *argv[]) 
 { 
     int server_fd, new_socket, port, fd, i = 0; 
@@ -29,7 +22,7 @@ int main(int argc, char *argv[])
     struct stat file_stat;
     char file_size[256] = {0};
     int remain_data, bytes_read = 0, bytes_written = 0;
-    fd_set read_fds, active_fds, fd_max;
+    fd_set read_fds, active_fds;
 
     if (argc < 2)
 	{
