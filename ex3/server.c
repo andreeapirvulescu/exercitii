@@ -25,12 +25,12 @@ int main(int argc, char *argv[])
     fd_set read_fds, active_fds;
 
     if (argc < 2)
-	{
-		printf("Usage: %s port \n", argv[0]);
-		return 1;
-	}
+    {
+        printf("Usage: %s port \n", argv[0]);
+        return 1;
+    }
 
-	port = atoi(argv[1]);
+    port = atoi(argv[1]);
 
     FD_ZERO(&active_fds);
        

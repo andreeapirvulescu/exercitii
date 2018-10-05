@@ -22,12 +22,12 @@ int main(int argc, char *argv[])
     int remain_data = 0, received_bytes = 0;
 
     if (argc < 4)
-	{
-		printf("Usage: %s server_ip server_port file\n", argv[0]);
-		return 1;
-	}
+    {
+        printf("Usage: %s server_ip server_port file\n", argv[0]);
+        return 1;
+    }
 
-	port = atoi(argv[2]);
+    port = atoi(argv[2]);
 
     if ((client_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
     { 
@@ -58,15 +58,15 @@ int main(int argc, char *argv[])
 
     if (strcmp(buffer, not_found_message) == 0)
     {
-    	printf("There is no file with that name on the server\n");
+        printf("There is no file with that name on the server\n");
         return 0;
     } else {
-    	file_size = atoi(buffer);
-    	sprintf(file_name, "client%d", getpid());
-    	if ((fd = open(file_name, O_WRONLY | O_CREAT, 0666)) == -1)
-    	{
-    		perror("Error with opening the file");
-    	}
+        file_size = atoi(buffer);
+        sprintf(file_name, "client%d", getpid());
+        if ((fd = open(file_name, O_WRONLY | O_CREAT, 0666)) == -1)
+        {
+            perror("Error with opening the file");
+        }
 
         remain_data = file_size;
         char *str = NULL;
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
             bytes_written = write(fd, str+1, received_bytes-abs(buffer-str-1));
             remain_data -= bytes_written;
         }
-    	
+        
         memset(buffer, 0, BUFFER_SIZE);
 
         while (remain_data > 0)
@@ -95,8 +95,8 @@ int main(int argc, char *argv[])
     }
     getchar();
 
-   	close(fd);
-   	close(client_fd);
+    close(fd);
+    close(client_fd);
 
     return 0; 
 }
